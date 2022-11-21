@@ -1,5 +1,8 @@
 # HIFIberry-sound-hack
 
+
+# Hack 1 - Use a non-hifiberry blessed card - Example using the HDMI output -  Can be used the analog or someother USB based sound card 
+
 Notes to bypass the HIFIberry - HIFIberryOS sound cards:
 
 Tested on a Raspberry pi 3 - via SSH
@@ -9,13 +12,13 @@ Tested on a Raspberry pi 3 - via SSH
 1 - Enable boot as read/write:
 `mount -o remount,rw /dev/mmcblk0p1 /boot`
 
-2- Change the line 
+2 - Change the line on /boot/config.txt
 from:
       `dtoverlay=vc4-fkms-v3d,audio=off`
 to:
       `dtoverlay=vc4-fkms-v3d,audio=on`
 
-3- Restart the HIFIberryOS
+3 - Restart the HIFIberryOS
 
 ## Enable HIFIberry to use other card then the HifiBerry
 
@@ -63,5 +66,104 @@ card 1: Headphones [bcm2835 Headphones], device 0: bcm2835 Headphones [bcm2835 H
 
 --------------------------------------------------------------------------------------------------------------------------------------------------------
 
-To Do 1 - Automation
-To Do 2 - Bluetooth audio output
+
+# Hack 2 - Using a bluetooth speaker (Or whatever other bluetooth audio device) as the output:
+
+Tested using a `Raspberry Pi 3 Model B Rev 1.2`
+
+This setup is useful when you have a good bluetooth speaker without line-in, or you want to add the HifiBerryOS features to the bluetooth speaker. So the Hifiberry will work like a bridge receiving the requests and redirecting the audio via bluetooth to the speakers. 
+
+1 - Enable boot as read/write:
+`mount -o remount,rw /dev/mmcblk0p1 /boot`
+
+2 - Include the line on /boot/config.txt to add bluetooth support - May not be necessary on other raspberries but it's required on P3 Model B
+      `dtparam=krnbt=on`
+
+3 - Create a file to add the bluetooth support on OS
+      `touch /etc/features/bluetooth`
+
+4 - Restart the Rasperry
+
+## Once the bluetooth is enabled let's pair the audio device:
+
+run `bluetoothctl`
+then: 
+```
+[bluetooth]# scan on
+Discovery started
+[CHG] Controller B8:27:EB:B5:A5:F8 Discovering: yes
+[NEW] Device 90:D9:94:2B:40:66 ZJ-YUPPIE
+[bluetooth]# 
+[bluetooth]# connect 90:D9:94:2B:40:66
+
+Attempting to connect to 90:D9:94:2B:40:66
+[CHG] Device 90:D9:94:2B:40:66 Connected: yes
+[CHG] Device 90:D9:94:2B:40:66 Modalias: bluetooth:v05D6p000Ad0240
+[CHG] Device 90:D9:94:2B:40:66 UUIDs: 00001101-0000-1000-8000-00805f9b34fb
+[CHG] Device 90:D9:94:2B:40:66 UUIDs: 0000110b-0000-1000-8000-00805f9b34fb
+[CHG] Device 90:D9:94:2B:40:66 UUIDs: 0000110e-0000-1000-8000-00805f9b34fb
+[CHG] Device 90:D9:94:2B:40:66 UUIDs: 0000111e-0000-1000-8000-00805f9b34fb
+[CHG] Device 90:D9:94:2B:40:66 UUIDs: 00001124-0000-1000-8000-00805f9b34fb
+[CHG] Device 90:D9:94:2B:40:66 UUIDs: 00001200-0000-1000-8000-00805f9b34fb
+[CHG] Device 90:D9:94:2B:40:66 ServicesResolved: yes
+[CHG] Device 90:D9:94:2B:40:66 Paired: yes
+Connection successful
+
+[bluetooth]# trust 90:D9:94:2B:40:66
+```
+Note: `trust` is necessary for bluetooth autoreconect 
+
+Note: the bluetooth device address (90:D9:94:2B:40:66) is unique to each device, proceeed with the change acordingly to your device address. 
+
+## Once the bluetooth is paired:
+
+1 - Make the bluetooth audio the default alsa output
+Overwrite the `/etc/asound.conf`
+
+```
+pcm.!default {
+        type plug                                         
+        slave.pcm {
+                type bluealsa
+                device "90:D9:94:2B:40:66"
+                profile "a2dp"
+        }
+        hint {
+                show on
+                description "Bluetooth Audio ALSA Backend"
+        }
+}
+
+ctl.!default {
+        type plug                                         
+        slave.pcm {
+                type bluealsa
+                device "90:D9:94:2B:40:66"
+                profile "a2dp"
+        }
+        hint {
+                show on
+                description "Bluetooth Audio ALSA Backend"
+        }
+}
+pcm.btheadset {
+        type plug
+        slave.pcm {
+                type bluealsa
+                device "90:D9:94:2B:40:66"
+                profile "a2dp"
+        }
+        hint {
+                show on
+                description "Bluetooth Audio ALSA Backend"
+        }
+}
+```
+Note: the bluetooth device address (90:D9:94:2B:40:66) is unique to each device, proceeed with the change acordingly to your device address.
+
+2 - Restart the Rasperry
+
+
+Node: On my experiments the bluetooth volume didn't work therefore the volume has to be set on the bluetooth audio device itself.
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+To Do - Automation
